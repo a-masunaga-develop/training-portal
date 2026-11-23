@@ -1,0 +1,6 @@
+cd E:\work\org-local\training-portal
+docker compose up -d
+& "C:\Program Files\Git\bin\bash.exe" ./infrastructure/dynamodb/init.sh
+& "C:\Program Files\Git\bin\bash.exe" ./infrastructure/dynamodb/seed.sh
+cd frontend
+npm.cmd run dev

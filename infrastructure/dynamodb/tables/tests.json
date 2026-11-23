@@ -1,0 +1,10 @@
+{
+  "TableName": "tests",
+  "AttributeDefinitions": [
+    { "AttributeName": "testId", "AttributeType": "S" }
+  ],
+  "KeySchema": [
+    { "AttributeName": "testId", "KeyType": "HASH" }
+  ],
+  "BillingMode": "PAY_PER_REQUEST"
+}
