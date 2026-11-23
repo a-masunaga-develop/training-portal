@@ -1,0 +1,477 @@
+========================================
+AWS_DEPLOY_PHASE1.txt
+研修ポータル MVP AWS公開手順
+========================================
+
+目的
+
+ローカルで動作しているMVPをAWSへ公開する。
+
+対象機能
+
+・Dashboard
+・Phase1
+・Test
+・Report
+・Admin
+
+公開後にURLでアクセスできる状態にする。
+
+========================================
+Phase1方針
+========================================
+
+まずは最小構成で公開する。
+
+構成
+
+Internet
+↓
+CloudFront（Amplify）
+↓
+Next.js
+↓
+DynamoDB
+
+まだ導入しないもの
+
+・API Gateway
+・Lambda
+・Cognito
+・WAF
+・Claude API
+
+まずは利用可能にすることを優先する。
+
+========================================
+Step1 GitHub準備
+========================================
+
+ローカルで動作確認
+
+実行
+
+npm run build
+
+成功すること
+
+次に
+
+npm run start
+
+確認項目
+
+□ Dashboard表示
+
+□ Phase1表示
+
+□ Test表示
+
+□ Report表示
+
+□ Admin表示
+
+□ DynamoDB Local保存
+
+----------------------------------------
+
+Git状態確認
+
+git status
+
+----------------------------------------
+
+コミット
+
+git add .
+
+git commit -m "Initial MVP"
+
+========================================
+Step2 GitHubへPush
+========================================
+
+GitHubでRepository作成
+
+例
+
+training-portal
+
+----------------------------------------
+
+Remote登録
+
+git remote add origin <Repository URL>
+
+----------------------------------------
+
+main作成
+
+git branch -M main
+
+----------------------------------------
+
+Push
+
+git push -u origin main
+
+----------------------------------------
+
+確認
+
+GitHub上に以下が見えること
+
+README
+
+frontend
+
+infrastructure
+
+docker-compose.yml
+
+========================================
+Step3 AWSアカウント準備
+========================================
+
+ログイン
+
+AWS Console
+
+----------------------------------------
+
+リージョン
+
+ap-northeast-1
+
+東京リージョン
+
+----------------------------------------
+
+IAM User作成
+
+権限
+
+AdministratorAccess
+
+※検証用
+
+後で権限を絞る
+
+========================================
+Step4 DynamoDB作成
+========================================
+
+利用するテーブル
+
+users
+
+reports
+
+tests
+
+progress
+
+test_results
+
+----------------------------------------
+
+現在の構成を利用
+
+infrastructure/dynamodb/tables
+
+----------------------------------------
+
+AWS CLI設定
+
+aws configure
+
+入力
+
+Region
+
+ap-northeast-1
+
+----------------------------------------
+
+テーブル作成
+
+例
+
+aws dynamodb create-table \
+--cli-input-json file://users.json
+
+----------------------------------------
+
+確認
+
+aws dynamodb list-tables
+
+期待結果
+
+users
+
+reports
+
+tests
+
+progress
+
+test_results
+
+========================================
+Step5 初期データ投入
+========================================
+
+利用
+
+infrastructure/dynamodb/seed
+
+----------------------------------------
+
+投入
+
+E:\work\org-local\training-portal\infrastructure\dynamodb\seed>cd E:\work\org-local\training-portal
+
+E:\work\org-local\training-portal>"C:\Program Files\Git\bin\bash.exe" ./infrastructure/dynamodb/seed.sh --aws
+
+----------------------------------------
+
+確認
+
+aws dynamodb scan --table-name users
+aws dynamodb scan --table-name progress
+aws dynamodb scan --table-name tests
+
+データが表示されること
+
+========================================
+Step6 Amplify構築
+========================================
+
+AWS Console
+
+↓
+
+Amplify
+
+↓
+
+Host Web App
+
+↓
+
+GitHub
+
+----------------------------------------
+
+連携
+
+GitHub認証
+
+----------------------------------------
+
+Repository
+
+training-portal
+
+----------------------------------------
+
+Branch
+
+main
+
+----------------------------------------
+
+Build開始
+
+Amplifyが自動実行
+
+npm install
+
+npm run build
+
+========================================
+Step7 環境変数設定
+========================================
+
+Amplify
+
+Environment Variables
+
+----------------------------------------
+
+登録
+
+APP_ENV=prod
+
+AWS_REGION=ap-northeast-1
+
+USERS_TABLE=users
+
+REPORTS_TABLE=reports
+
+TESTS_TABLE=tests
+
+PROGRESS_TABLE=progress
+
+TEST_RESULTS_TABLE=test_results
+
+========================================
+Step8 DynamoDB接続切替
+========================================
+
+ローカル
+
+APP_ENV=local
+
+DYNAMODB_ENDPOINT=http://localhost:8000
+
+----------------------------------------
+
+本番
+
+APP_ENV=prod
+
+AWS_REGION=ap-northeast-1
+
+----------------------------------------
+
+実装例
+
+if (APP_ENV === "local")
+
+↓
+
+DynamoDB Local
+
+else
+
+↓
+
+AWS DynamoDB
+
+========================================
+Step9 自動デプロイ確認
+========================================
+
+Git Push
+
+↓
+
+Amplify Build
+
+↓
+
+Amplify Deploy
+
+----------------------------------------
+
+動作確認
+
+URL例
+
+https://xxxxx.amplifyapp.com
+
+========================================
+Step10 総合テスト
+========================================
+
+Dashboard確認
+
+□ 表示できる
+
+----------------------------------------
+
+Phase1確認
+
+□ 表示できる
+
+----------------------------------------
+
+Report確認
+
+□ 保存できる
+
+□ DynamoDBへ保存される
+
+----------------------------------------
+
+Test確認
+
+□ 回答できる
+
+□ 採点できる
+
+----------------------------------------
+
+Admin確認
+
+□ 一覧表示できる
+
+========================================
+Phase1完了条件
+========================================
+
+□ GitHub管理
+
+□ Amplify公開
+
+□ DynamoDB接続
+
+□ Dashboard動作
+
+□ Phase1動作
+
+□ Report保存
+
+□ Test動作
+
+□ Admin動作
+
+□ URL公開
+
+========================================
+Phase2予定
+========================================
+
+CloudFront
+
+WAF
+
+API Gateway
+
+Lambda
+
+Cognito
+
+Claude API
+
+S3
+
+GitHub Actions
+
+========================================
+最終構成
+========================================
+
+Internet
+↓
+CloudFront
+↓
+WAF
+↓
+Next.js
+↓
+API Gateway
+↓
+Lambda
+↓
+DynamoDB
+
+       ↓
+
+     Cognito
+
+       ↓
+
+    Claude API

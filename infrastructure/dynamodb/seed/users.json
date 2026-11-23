@@ -1,8 +1,22 @@
 {
   "users": [
-    { "PutRequest": { "Item": { "userId": { "S": "u001" }, "name": { "S": "山田太郎" }, "role": { "S": "student" } } } },
-    { "PutRequest": { "Item": { "userId": { "S": "u002" }, "name": { "S": "佐藤花子" }, "role": { "S": "student" } } } },
-    { "PutRequest": { "Item": { "userId": { "S": "u003" }, "name": { "S": "鈴木一郎" }, "role": { "S": "student" } } } },
-    { "PutRequest": { "Item": { "userId": { "S": "a001" }, "name": { "S": "管理者" }, "role": { "S": "admin" } } } }
+    {
+      "PutRequest": {
+        "Item": {
+          "userId": { "S": "u001" },
+          "name": { "S": "Yamada Taro" },
+          "role": { "S": "student" }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "userId": { "S": "u002" },
+          "name": { "S": "Sato Hanako" },
+          "role": { "S": "student" }
+        }
+      }
+    }
   ]
 }

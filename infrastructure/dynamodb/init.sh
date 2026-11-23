@@ -1,21 +1,23 @@
 #!/bin/bash
-# Create DynamoDB Local tables from tables/*.json (idempotent).
+# tables/*.json から DynamoDB のテーブルを作成する（既に存在するテーブルはスキップ）。
+#
+#   ./init.sh               DynamoDB Local に作成
+#   ./init.sh --aws         AWS の DynamoDB に作成（実行前に確認あり。--yes で省略）
+#   ./init.sh --seed        作成後に seed.sh も実行（--aws と併用可）
 set -euo pipefail
 
 cd "$(dirname "$0")"
+source ./_env.sh "$@"
 
-ENDPOINT="${DYNAMODB_ENDPOINT:-http://localhost:8000}"
-REGION="${AWS_REGION:-ap-northeast-1}"
-export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
-export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
-export AWS_CLI_FILE_ENCODING=UTF-8
-export AWS_PAGER=""
-
-AWS="aws dynamodb --endpoint-url ${ENDPOINT} --region ${REGION}"
+RUN_SEED="false"
+for arg in "${EXTRA_ARGS[@]}"; do
+  [ "${arg}" = "--seed" ] && RUN_SEED="true"
+done
 
 echo "====================================="
-echo "DynamoDB Local Initialization Start"
+echo "DynamoDB Initialization Start"
 echo "====================================="
+confirm_target
 
 for file in tables/*.json; do
   table=$(basename "${file}" .json)
@@ -34,9 +36,14 @@ echo ""
 echo "Current Tables"
 ${AWS} list-tables
 
-if [ "${1:-}" = "--seed" ]; then
+if [ "${RUN_SEED}" = "true" ]; then
   echo ""
-  ./seed.sh
+  # 確認は済んでいるので seed.sh 側では省略する
+  if [ "${TARGET}" = "aws" ]; then
+    ./seed.sh --aws --yes
+  else
+    ./seed.sh
+  fi
 fi
 
 echo ""

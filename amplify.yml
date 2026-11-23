@@ -1,0 +1,22 @@
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            # Amplify の環境変数は Next.js のサーバー処理から直接読めないため .env.production に書き出す
+            - env | grep -E '^(APP_ENV|APP_REGION|[A-Z_]+_TABLE)=' >> .env.production || true
+            - cat .env.production || true
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - .next/cache/**/*
+          - node_modules/**/*
