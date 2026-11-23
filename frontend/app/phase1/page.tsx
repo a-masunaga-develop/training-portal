@@ -2,14 +2,15 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CURRENT_USER_ID } from "@/lib/constants";
+import { requireSessionUser } from "@/lib/auth";
 import { LESSONS } from "@/lib/content";
 import { getProgress } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function Phase1Page() {
-  const progress = await getProgress(CURRENT_USER_ID);
+  const user = await requireSessionUser();
+  const progress = await getProgress(user.userId);
 
   return (
     <div className="space-y-6">

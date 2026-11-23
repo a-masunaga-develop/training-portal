@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompleteLessonButton } from "@/components/complete-lesson-button";
-import { CURRENT_USER_ID } from "@/lib/constants";
+import { requireSessionUser } from "@/lib/auth";
 import { LESSONS, getLesson } from "@/lib/content";
 import { getProgress } from "@/lib/repository";
 
@@ -15,7 +15,8 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
   const lesson = getLesson(lessonId);
   if (!lesson) notFound();
 
-  const progress = await getProgress(CURRENT_USER_ID);
+  const user = await requireSessionUser();
+  const progress = await getProgress(user.userId);
   const done = progress.completedLessons.includes(lesson.id);
   const index = LESSONS.findIndex((l) => l.id === lesson.id);
   const next = LESSONS[index + 1];
