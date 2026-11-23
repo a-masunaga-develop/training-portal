@@ -3,10 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CURRENT_USER_ID } from "@/lib/constants";
+import { requireSessionUser } from "@/lib/auth";
 import { LESSONS } from "@/lib/content";
 import { todayJst } from "@/lib/format";
-import { getProgress, getUser, listReports, listTestResults, listTests } from "@/lib/repository";
+import { getProgress, listReports, listTestResults, listTests } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +16,11 @@ const NOTICES = [
 ];
 
 export default async function DashboardPage() {
-  const [user, progress, reports, results, tests] = await Promise.all([
-    getUser(CURRENT_USER_ID),
-    getProgress(CURRENT_USER_ID),
-    listReports(CURRENT_USER_ID),
-    listTestResults(CURRENT_USER_ID),
+  const user = await requireSessionUser();
+  const [progress, reports, results, tests] = await Promise.all([
+    getProgress(user.userId),
+    listReports(user.userId),
+    listTestResults(user.userId),
     listTests(),
   ]);
 
@@ -33,7 +33,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">ダッシュボード</h1>
-        <p className="text-sm text-muted-foreground">{user?.name ?? CURRENT_USER_ID} さん、こんにちは</p>
+        <p className="text-sm text-muted-foreground">{user.name} さん、こんにちは</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

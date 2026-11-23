@@ -34,6 +34,16 @@ export async function getUser(userId: string): Promise<User | null> {
   return (res.Item as User | undefined) ?? null;
 }
 
+/** Cognito のメールアドレスから users を検索する（大文字小文字は区別しない） */
+export async function getUserByEmail(email: string): Promise<User | null> {
+  const target = email.trim().toLowerCase();
+  const users = await scanAll<User>({
+    TableName: TABLES.users,
+    FilterExpression: "attribute_exists(email)",
+  });
+  return users.find((u) => u.email?.toLowerCase() === target) ?? null;
+}
+
 /* ---------- progress ---------- */
 
 export async function getProgress(userId: string): Promise<Progress> {

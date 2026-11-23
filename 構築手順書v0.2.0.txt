@@ -1,0 +1,565 @@
+# Training Portal v0.2.0 開発計画
+
+## 概要
+
+v0.1.0では研修ポータルのMVPを構築し、AWS Amplify上で公開した。
+
+v0.2.0では実運用に向けた最初の機能拡張として、認証・認可機能を実装する。
+
+---
+
+## 目的
+
+現在の課題
+
+- 誰でもURLアクセス可能
+- ユーザー識別ができない
+- 管理者と受講者の権限制御がない
+- 学習履歴と利用者が紐付かない
+
+これらを解決する。
+
+---
+
+## リリース目標
+
+### 認証
+
+- Cognito導入
+- ログイン
+- ログアウト
+- パスワード変更
+
+### 認可
+
+- 管理者権限
+- 受講者権限
+
+### 画面制御
+
+- 未認証アクセス制御
+- ログイン後リダイレクト
+- セッション管理
+
+---
+
+## システム構成
+
+### v0.1.0
+
+```text
+Internet
+↓
+AWS Amplify
+↓
+Next.js
+↓
+DynamoDB
+```
+
+### v0.2.0
+
+```text
+Internet
+↓
+AWS Amplify
+↓
+Cognito
+↓
+Next.js
+↓
+DynamoDB
+```
+
+---
+
+## AWS構築作業
+
+### Cognito User Pool作成
+
+名称
+
+```text
+training-portal-users
+```
+
+設定
+
+- Emailログイン
+- パスワードポリシー有効（8文字以上・英大文字・英小文字・数字）
+- MFAなし（MVP）
+- 自己登録無効（管理者のみユーザー作成可）
+
+作成結果
+
+```text
+User Pool ID : ap-northeast-1_WIFdomguf
+```
+
+実行コマンド（AWS CLI）
+
+```bash
+aws cognito-idp create-user-pool --region ap-northeast-1 \
+  --pool-name training-portal-users \
+  --username-attributes email --auto-verified-attributes email \
+  --policies 'PasswordPolicy={MinimumLength=8,RequireUppercase=true,RequireLowercase=true,RequireNumbers=true,RequireSymbols=false,TemporaryPasswordValidityDays=7}' \
+  --admin-create-user-config AllowAdminCreateUserOnly=true \
+  --mfa-configuration OFF \
+  --account-recovery-setting 'RecoveryMechanisms=[{Priority=1,Name=verified_email}]'
+```
+
+---
+
+### App Client作成
+
+名称
+
+```text
+training-portal-web
+```
+
+設定
+
+- クライアントシークレットなし（ブラウザから利用するため）
+- 認証フロー：ALLOW_USER_SRP_AUTH / ALLOW_REFRESH_TOKEN_AUTH
+- ユーザー存在エラーの防止：有効
+
+作成結果
+
+```text
+User Pool ID : ap-northeast-1_WIFdomguf
+Client ID    : 66qked8uk0ofs249iih2vomik0
+```
+
+環境変数へ登録する。
+
+実行コマンド（AWS CLI）
+
+```bash
+aws cognito-idp create-user-pool-client --region ap-northeast-1 \
+  --user-pool-id ap-northeast-1_WIFdomguf \
+  --client-name training-portal-web \
+  --no-generate-secret \
+  --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+  --prevent-user-existence-errors ENABLED
+```
+
+---
+
+### ユーザーグループ作成
+
+管理者
+
+```text
+admin
+```
+
+受講者
+
+```text
+student
+```
+
+実行コマンド（AWS CLI）
+
+```bash
+aws cognito-idp create-group --region ap-northeast-1 --user-pool-id ap-northeast-1_WIFdomguf --group-name admin --description "管理者"
+aws cognito-idp create-group --region ap-northeast-1 --user-pool-id ap-northeast-1_WIFdomguf --group-name student --description "受講者"
+```
+
+権限はこのグループで判定する（users テーブルの role は表示用）。
+
+---
+
+### テストユーザー作成
+
+管理者
+
+```text
+admin@example.com
+```
+
+受講者
+
+```text
+student@example.com
+```
+
+仮パスワードで作成し、初回ログイン時に本人が新しいパスワードを設定する。
+example.com はメールを受信できないため、招待メールは送信しない（SUPPRESS）。
+仮パスワードの有効期限は7日間。
+
+※ 仮パスワードはこの手順書やリポジトリに記載しない。
+
+実行コマンド（AWS CLI、ユーザーごとに実行）
+
+```bash
+aws cognito-idp admin-create-user --region ap-northeast-1 \
+  --user-pool-id ap-northeast-1_WIFdomguf \
+  --username student@example.com \
+  --user-attributes Name=email,Value=student@example.com Name=email_verified,Value=true \
+  --temporary-password '<仮パスワード>' \
+  --message-action SUPPRESS
+
+aws cognito-idp admin-add-user-to-group --region ap-northeast-1 \
+  --user-pool-id ap-northeast-1_WIFdomguf \
+  --username student@example.com --group-name student
+```
+
+仮パスワードの有効期限が切れた場合は、--message-action RESEND ではなく
+admin-set-user-password（--no-permanent）で仮パスワードを再設定する。
+
+---
+
+## アプリケーション開発
+
+### 利用ライブラリ
+
+```text
+aws-amplify 6.22.2
+@aws-amplify/adapter-nextjs 1.8.1
+```
+
+トークンは Cookie に保存し（Amplify.configure の ssr: true）、
+Middleware・Server Component・Route Handler からログイン状態を読み取る。
+
+主なファイル
+
+```text
+frontend/middleware.ts               認証ガード
+frontend/lib/amplify-config.ts       Cognito 接続設定
+frontend/lib/amplify-server.ts       サーバー用ランナー
+frontend/lib/auth.ts                 ログインユーザー取得
+frontend/lib/api.ts                  API の認可（authorize / scopedUserId）
+frontend/components/login-form.tsx   ログイン画面
+frontend/components/site-header.tsx  ログアウト・パスワード変更リンク
+```
+
+---
+
+### ログイン画面作成
+
+URL
+
+```text
+/login
+```
+
+機能
+
+- メールアドレス入力
+- パスワード入力
+- ログインボタン
+- 初回ログイン時の新しいパスワード設定（仮パスワードからの変更）
+- ログイン後、元のページ（?next=）へリダイレクト
+
+---
+
+### パスワード変更
+
+URL
+
+```text
+/account/password
+```
+
+ヘッダーの「パスワード変更」から遷移する。
+現在のパスワードと新しいパスワードを入力して変更する。
+
+---
+
+### ログアウト機能
+
+ヘッダーへ追加
+
+```text
+ログアウト
+```
+
+選択時
+
+```text
+Cognitoサインアウト
+```
+
+実施
+
+---
+
+### Middleware実装
+
+保護対象
+
+/login と静的ファイルを除くすべて
+
+```text
+/                  ダッシュボード
+/phase1
+/test
+/reports           日報
+/admin
+/account/password
+/api/*
+```
+
+未認証時
+
+```text
+画面：/login?next=<元のページ> へ遷移
+API ：401 ログインしてください
+```
+
+---
+
+### 認証状態管理
+
+ユーザー情報保持
+
+```text
+ユーザーID     users テーブルの userId（メールアドレスで紐付け）
+メールアドレス Cognito の ID トークン
+グループ       Cognito の ID トークン（cognito:groups）
+```
+
+users テーブルに該当メールアドレスがない場合は、
+Cognito のユーザーID（sub）を userId として扱う。
+
+---
+
+## 権限管理
+
+### student
+
+利用可能
+
+```text
+Dashboard
+
+Phase1
+
+Test
+
+Report
+```
+
+---
+
+### admin
+
+利用可能
+
+```text
+Dashboard
+
+Phase1
+
+Test
+
+Report
+
+Admin
+```
+
+---
+
+### Admin画面制御
+
+studentアクセス時
+
+```text
+403
+
+アクセス権限がありません
+```
+
+表示
+
+Middleware で 403 画面に切り替え、Admin 画面側でも管理者か再確認する。
+管理画面のリンクは admin のみヘッダーに表示する。
+
+---
+
+### API の権限
+
+```text
+GET  /api/users          admin のみ
+GET  /api/reports        student：自分の日報 / admin：全件（?userId= で絞込）
+GET  /api/test-results   student：自分の結果 / admin：全件（?userId= で絞込）
+GET  /api/progress       student：自分の進捗 / admin：全件（?userId= で絞込）
+GET  /api/tests          ログインユーザー全員
+POST /api/reports        ログインユーザー自身の日報として保存
+POST /api/test-results   ログインユーザー自身の結果として保存
+POST /api/progress       ログインユーザー自身の進捗として保存
+```
+
+---
+
+## 環境変数
+
+Amplifyへ追加（ホスティング → 環境変数）
+
+```text
+AMPLIFY_MONOREPO_APP_ROOT=frontend
+
+APP_ENV=prod
+
+APP_REGION=ap-northeast-1
+
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=ap-northeast-1_WIFdomguf
+
+NEXT_PUBLIC_COGNITO_CLIENT_ID=66qked8uk0ofs249iih2vomik0
+
+USERS_TABLE=users
+
+REPORTS_TABLE=reports
+
+TESTS_TABLE=tests
+
+PROGRESS_TABLE=progress
+
+TEST_RESULTS_TABLE=test_results
+```
+
+注意
+
+- AWS_ で始まる環境変数は Amplify の予約語のため登録できない。
+  リージョンは AWS_REGION ではなく APP_REGION で指定する。
+- Amplify の環境変数は amplify.yml のビルド時に .env.production へ書き出し、
+  Next.js から読めるようにしている（NEXT_PUBLIC_ で始まる変数も対象）。
+- AWS CLI の update-app --environment-variables は全件置き換えになるため、
+  既存の変数もすべて指定する。
+
+ローカル（frontend/.env.local）
+
+```text
+APP_ENV=local
+AWS_REGION=ap-northeast-1
+DYNAMODB_ENDPOINT=http://localhost:8000
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=ap-northeast-1_WIFdomguf
+NEXT_PUBLIC_COGNITO_CLIENT_ID=66qked8uk0ofs249iih2vomik0
+```
+
+Cognito にはローカル用のエミュレーターがないため、ローカル開発でも AWS の Cognito を利用する。
+
+---
+
+## DynamoDB拡張
+
+usersテーブル項目追加
+
+```json
+{
+  "userId": "u001",
+  "email": "student@example.com",
+  "name": "Yamada Taro",
+  "role": "student"
+}
+```
+
+ログイン時、Cognito のメールアドレスで users テーブルを検索し、userId を特定する。
+既存の日報・テスト結果・進捗（userId=u001 など）はそのまま引き継がれる。
+
+管理者用レコードも追加する。
+
+```json
+{
+  "userId": "a001",
+  "email": "admin@example.com",
+  "name": "Admin",
+  "role": "admin"
+}
+```
+
+ローカル（DynamoDB Local）
+
+```text
+infrastructure/dynamodb/seed/users.json を更新済み
+./infrastructure/dynamodb/seed.sh で投入
+```
+
+AWS（users テーブルのみ更新。seed.sh --aws は tests / progress も上書きするため使わない）
+
+```powershell
+aws dynamodb update-item --table-name users --key '{\"userId\":{\"S\":\"u001\"}}' --update-expression "SET email = :e" --expression-attribute-values '{\":e\":{\"S\":\"student@example.com\"}}' --region ap-northeast-1
+
+aws dynamodb put-item --table-name users --item '{\"userId\":{\"S\":\"a001\"},\"email\":{\"S\":\"admin@example.com\"},\"name\":{\"S\":\"Admin\"},\"role\":{\"S\":\"admin\"}}' --region ap-northeast-1
+```
+
+---
+
+## Git運用
+
+開発ブランチ
+
+```text
+feature/cognito
+```
+
+作業完了後
+
+```text
+feature/cognito
+↓
+develop
+↓
+main
+```
+
+でマージする。
+
+---
+
+## テスト項目
+
+### 認証
+
+- ログイン成功
+- ログイン失敗
+- ログアウト
+
+### 権限
+
+- studentでAdminアクセス拒否
+- adminでAdminアクセス許可
+
+### 画面
+
+- Dashboard表示
+- Phase1表示
+- Test表示
+- Report表示
+- Admin表示
+
+---
+
+## v0.2.0 完了条件
+
+✅ Cognito構築
+
+✅ ログイン画面
+
+✅ ログアウト機能
+
+✅ セッション管理
+
+✅ 認証ガード
+
+✅ admin権限
+
+✅ student権限
+
+✅ Admin画面制御
+
+✅ Amplify環境変数設定
+
+✅ AWS公開確認
+
+---
+
+## リリース成果
+
+v0.2.0では認証・認可基盤を構築し、研修ポータルを社内利用可能な状態へ引き上げる。
+
+以降はコンテンツ管理機能およびAI機能の開発へ進む。

@@ -4,6 +4,7 @@
       "PutRequest": {
         "Item": {
           "userId": { "S": "u001" },
+          "email": { "S": "student@example.com" },
           "name": { "S": "Yamada Taro" },
           "role": { "S": "student" }
         }
@@ -13,8 +14,19 @@
       "PutRequest": {
         "Item": {
           "userId": { "S": "u002" },
+          "email": { "S": "student2@example.com" },
           "name": { "S": "Sato Hanako" },
           "role": { "S": "student" }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "userId": { "S": "a001" },
+          "email": { "S": "admin@example.com" },
+          "name": { "S": "Admin" },
+          "role": { "S": "admin" }
         }
       }
     }
