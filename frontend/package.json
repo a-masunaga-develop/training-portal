@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-amplify/adapter-nextjs": "^1.8.1",
     "@aws-sdk/client-dynamodb": "^3.1175.0",
     "@aws-sdk/lib-dynamodb": "^3.1175.0",
+    "aws-amplify": "^6.22.2",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "lucide-react": "^1.77.0",

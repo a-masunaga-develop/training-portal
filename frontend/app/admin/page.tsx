@@ -1,7 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Forbidden } from "@/components/forbidden";
 import { ReportList } from "@/components/report-list";
+import { requireSessionUser } from "@/lib/auth";
 import { LESSONS } from "@/lib/content";
 import { formatDateTime, todayJst } from "@/lib/format";
 import { listProgress, listReports, listTestResults, listUsers } from "@/lib/repository";
@@ -9,6 +11,10 @@ import { listProgress, listReports, listTestResults, listUsers } from "@/lib/rep
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
+  // Middleware でも制御しているが、念のため画面側でも管理者か確認する
+  const me = await requireSessionUser();
+  if (!me.isAdmin) return <Forbidden />;
+
   const [users, progressList, reports, results] = await Promise.all([
     listUsers(),
     listProgress(),

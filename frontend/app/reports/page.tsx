@@ -1,14 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportForm } from "@/components/report-form";
 import { ReportList } from "@/components/report-list";
-import { CURRENT_USER_ID } from "@/lib/constants";
+import { requireSessionUser } from "@/lib/auth";
 import { todayJst } from "@/lib/format";
 import { listReports } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const reports = await listReports(CURRENT_USER_ID);
+  const user = await requireSessionUser();
+  const reports = await listReports(user.userId);
   const totalHours = reports.reduce((sum, r) => sum + r.hours, 0);
 
   return (

@@ -1,14 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TestForm } from "@/components/test-form";
-import { CURRENT_USER_ID } from "@/lib/constants";
+import { requireSessionUser } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { listPublicTests, listTestResults } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function TestPage() {
-  const [tests, results] = await Promise.all([listPublicTests(), listTestResults(CURRENT_USER_ID)]);
+  const user = await requireSessionUser();
+  const [tests, results] = await Promise.all([listPublicTests(), listTestResults(user.userId)]);
 
   return (
     <div className="space-y-6">

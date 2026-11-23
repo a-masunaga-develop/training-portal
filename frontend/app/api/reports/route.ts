@@ -1,19 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { errorResponse, readJson } from "@/lib/api";
-import { CURRENT_USER_ID } from "@/lib/constants";
+import { authorize, errorResponse, readJson, scopedUserId } from "@/lib/api";
 import { createReport, listReports, validateReport, type ReportInput } from "@/lib/repository";
 
-/** GET /api/reports?userId=u001 （userId 省略時は全件） */
+/** GET /api/reports : 受講者は自分の日報、管理者は ?userId= 指定ユーザーまたは全件 */
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get("userId") ?? undefined;
-    return NextResponse.json(await listReports(userId));
+    const auth = await authorize();
+    if (auth.response) return auth.response;
+    return NextResponse.json(await listReports(scopedUserId(auth.user, req)));
   } catch (e) {
     return errorResponse(e);
   }
 }
 
-/** POST /api/reports : 日報登録 */
+/** POST /api/reports : ログイン中ユーザーの日報を登録 */
 export async function POST(req: NextRequest) {
   const body = await readJson<Partial<ReportInput>>(req);
   const errors = validateReport(body ?? {});
@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: errors.join("\n") || "不正なリクエストです" }, { status: 400 });
   }
   try {
-    const report = await createReport(CURRENT_USER_ID, body as ReportInput);
+    const auth = await authorize();
+    if (auth.response) return auth.response;
+    const report = await createReport(auth.user.userId, body as ReportInput);
     return NextResponse.json(report, { status: 201 });
   } catch (e) {
     return errorResponse(e);
