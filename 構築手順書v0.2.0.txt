@@ -536,30 +536,111 @@ main
 
 ## v0.2.0 完了条件
 
-✅ Cognito構築
+確認日：2026-11-24　本番URL：https://main.d3gpm7w9tm4i7j.amplifyapp.com/
 
-✅ ログイン画面
+| 項目 | 結果 | 確認内容 |
+|---|---|---|
+| Cognito構築 | ✅ | User Pool / App Client / グループ admin・student / テストユーザー2名を作成 |
+| ログイン画面 | ✅ | ブラウザで admin・student ともログイン成功、誤ったパスワードでエラー表示 |
+| 初回パスワード設定 | ✅ | 仮パスワードでログイン後、新しいパスワードを設定 |
+| ログアウト機能 | ✅ | ログアウト後 /login へ遷移 |
+| パスワード変更 | ✅ | /account/password を実装 |
+| セッション管理 | ✅ | トークンを Cookie に保存し、サーバー側でログイン状態を取得 |
+| 認証ガード | ✅ | 未ログインで / や /admin を開くと /login?next=... へ転送、API は 401 |
+| admin権限 | ✅ | admin で管理画面を表示、ヘッダーに管理画面リンクを表示 |
+| student権限 | ✅ | student で自分（u001）の日報・進捗を表示 |
+| Admin画面制御 | ✅ | student で /admin を開くと「403 アクセス権限がありません」 |
+| Amplify環境変数設定 | ✅ | NEXT_PUBLIC_COGNITO_USER_POOL_ID / NEXT_PUBLIC_COGNITO_CLIENT_ID を追加（計10件） |
+| AWS公開確認 | ✅ | main マージ後の Amplify ビルド5（コミット 3fbcbae）が成功 |
 
-✅ ログアウト機能
+---
 
-✅ セッション管理
+## 権限の見直し（v0.1.0 の残作業）
 
-✅ 認証ガード
+### Amplify コンピューティングロール
 
-✅ admin権限
+```text
+ロール   : training-portal-amplify-compute-role
+ポリシー : TrainingPortalDynamoDBAccess（v2 を既定に設定）
+```
 
-✅ student権限
+対象を全テーブル（table/*）から、利用する5テーブルに限定した。
 
-✅ Admin画面制御
+```text
+users / reports / tests / progress / test_results
+```
 
-✅ Amplify環境変数設定
+許可する操作
 
-✅ AWS公開確認
+```text
+dynamodb:GetItem
+dynamodb:PutItem
+dynamodb:Scan
+dynamodb:BatchWriteItem
+```
+
+問題があれば、ポリシーの既定バージョンを v1 に戻せば元の権限に戻る。
+
+確認結果（2026-11-24）
+
+```text
+本番URLでログインし、ダッシュボード表示・日報保存ができることを確認
+```
+
+### 作業用 IAM ユーザー
+
+```text
+ユーザー : develop（CLI 専用、コンソールログインなし）
+グループ : develop-group
+変更前   : AdministratorAccess
+変更後   : TrainingPortalDeveloper（カスタマー管理ポリシー）
+```
+
+TrainingPortalDeveloper で許可する操作
+
+```text
+DynamoDB : 5テーブル（とそのインデックス）の作成・参照・データ読み書き
+           ※ テーブル削除は不可
+Cognito  : training-portal-users のユーザー・グループ管理
+Amplify  : training-portal アプリの設定変更・ビルド
+           ※ アプリ削除は明示的に拒否
+IAM      : 読み取りのみ（Get* / List*）
+           コンピューティングロールを Amplify に渡す iam:PassRole のみ許可
+```
+
+確認結果（2026-11-24）
+
+```text
+許可 : dynamodb list-tables / scan / describe-table
+       cognito-idp list-users / list-groups
+       amplify get-app / list-jobs
+       iam list-attached-group-policies
+拒否 : s3 ls / ec2 describe-instances / iam create-policy-version
+```
+
+注意
+
+- develop ユーザーは IAM を変更できない。
+  権限の追加（S3・Lambda などを使う段階）や元に戻す作業は、
+  AWS コンソールに admin ユーザーでログインして行う。
+- 元に戻す場合は develop-group に AdministratorAccess を付け直す。
+
+### 管理者 IAM ユーザー
+
+```text
+ユーザー : admin（2026-11-23 作成）
+権限     : AdministratorAccess
+用途     : コンソール専用（アクセスキーなし）
+MFA      : 設定済み（2026-11-23）
+```
+
+- 普段の管理作業は admin で行い、ルートユーザーは使わない。
+- ルートユーザーは MFA 設定済み・アクセスキーなし。
 
 ---
 
 ## リリース成果
 
-v0.2.0では認証・認可基盤を構築し、研修ポータルを社内利用可能な状態へ引き上げる。
+v0.2.0では認証・認可基盤を構築し、研修ポータルを社内利用可能な状態へ引き上げた。
 
 以降はコンテンツ管理機能およびAI機能の開発へ進む。
