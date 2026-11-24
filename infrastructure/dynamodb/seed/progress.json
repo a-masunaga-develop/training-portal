@@ -1,7 +1,0 @@
-{
-  "progress": [
-    { "PutRequest": { "Item": { "userId": { "S": "u001" }, "phase": { "S": "phase1" }, "completed": { "N": "25" }, "completedLessons": { "L": [ { "S": "cloud" } ] } } } },
-    { "PutRequest": { "Item": { "userId": { "S": "u002" }, "phase": { "S": "phase1" }, "completed": { "N": "50" }, "completedLessons": { "L": [ { "S": "cloud" }, { "S": "iam" } ] } } } },
-    { "PutRequest": { "Item": { "userId": { "S": "u003" }, "phase": { "S": "phase1" }, "completed": { "N": "0" }, "completedLessons": { "L": [] } } } }
-  ]
-}

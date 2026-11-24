@@ -4,27 +4,16 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 
-export function CompleteLessonButton({ lessonId, done }: { lessonId: string; done: boolean }) {
+/** テストのないコンテンツを完了にする */
+export function CompleteContentButton({ contentId }: { contentId: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (done) {
-    return (
-      <Button disabled variant="secondary">
-        完了済み
-      </Button>
-    );
-  }
-
   const onClick = () =>
     startTransition(async () => {
       setError(null);
-      const res = await fetch("/api/progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId }),
-      });
+      const res = await fetch(`/api/contents/${encodeURIComponent(contentId)}/complete`, { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         setError(body.error ?? "保存に失敗しました");

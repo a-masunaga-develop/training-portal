@@ -1,48 +1,34 @@
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Forbidden } from "@/components/forbidden";
 import { ReportList } from "@/components/report-list";
-import { requireSessionUser } from "@/lib/auth";
-import { LESSONS } from "@/lib/content";
+import { getStudentSummaries } from "@/lib/admin-data";
 import { formatDateTime, todayJst } from "@/lib/format";
-import { listProgress, listReports, listTestResults, listUsers } from "@/lib/repository";
+import { listReports, listTestResults, listUsers } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  // Middleware でも制御しているが、念のため画面側でも管理者か確認する
-  const me = await requireSessionUser();
-  if (!me.isAdmin) return <Forbidden />;
-
-  const [users, progressList, reports, results] = await Promise.all([
+  const [{ students, contents }, users, reports, results] = await Promise.all([
+    getStudentSummaries(),
     listUsers(),
-    listProgress(),
     listReports(),
     listTestResults(),
   ]);
 
-  const students = users.filter((u) => u.role === "student");
   const names = Object.fromEntries(users.map((u) => [u.userId, u.name]));
-  const progressByUser = new Map(progressList.map((p) => [p.userId, p]));
+  const titles = new Map(contents.map((c) => [c.contentId, c.title]));
   const today = todayJst();
-
+  const submittedToday = new Set(reports.filter((r) => r.date === today).map((r) => r.userId));
   const avgProgress =
     students.length === 0
       ? 0
-      : Math.round(
-          students.reduce((sum, s) => sum + (progressByUser.get(s.userId)?.completed ?? 0), 0) /
-            students.length,
-        );
-  const submittedToday = new Set(reports.filter((r) => r.date === today).map((r) => r.userId));
+      : Math.round(students.reduce((sum, s) => sum + s.curriculum.rate, 0) / students.length);
+  const contentResults = results.filter((r) => r.contentId).slice(0, 20);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">管理画面</h1>
-        <p className="text-sm text-muted-foreground">受講者の進捗・日報・テスト結果を確認します。</p>
-      </div>
-
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
@@ -68,56 +54,15 @@ export default async function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">受講者一覧・進捗</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-lg">最新のテスト結果</CardTitle>
+            <Link href="/admin/students" className="text-sm text-muted-foreground hover:underline">
+              受講者ごとの進捗 →
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>氏名</TableHead>
-                <TableHead className="w-1/3">進捗率</TableHead>
-                <TableHead className="text-right">日報数</TableHead>
-                <TableHead className="text-right">最新テスト</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((s) => {
-                const p = progressByUser.get(s.userId);
-                const latest = results.find((r) => r.userId === s.userId);
-                return (
-                  <TableRow key={s.userId}>
-                    <TableCell className="font-mono text-xs">{s.userId}</TableCell>
-                    <TableCell>{s.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={p?.completed ?? 0} />
-                        <span className="w-12 text-right text-xs text-muted-foreground">
-                          {p?.completed ?? 0}%
-                        </span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {p?.completedLessons?.length ?? 0} / {LESSONS.length} レッスン
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {reports.filter((r) => r.userId === s.userId).length}
-                    </TableCell>
-                    <TableCell className="text-right">{latest ? `${latest.score}点` : "未受験"}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">テスト結果</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {results.length === 0 ? (
+          {contentResults.length === 0 ? (
             <p className="text-sm text-muted-foreground">テスト結果はまだありません。</p>
           ) : (
             <Table>
@@ -125,21 +70,27 @@ export default async function AdminPage() {
                 <TableRow>
                   <TableHead>受験日時</TableHead>
                   <TableHead>氏名</TableHead>
-                  <TableHead>フェーズ</TableHead>
-                  <TableHead className="text-right">正解数</TableHead>
+                  <TableHead>コンテンツ</TableHead>
+                  <TableHead className="text-right">回数</TableHead>
                   <TableHead className="text-right">得点</TableHead>
+                  <TableHead className="text-right">判定</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {results.map((r) => (
+                {contentResults.map((r) => (
                   <TableRow key={r.resultId}>
                     <TableCell>{formatDateTime(r.takenAt)}</TableCell>
-                    <TableCell>{names[r.userId] ?? r.userId}</TableCell>
-                    <TableCell>{r.phase}</TableCell>
-                    <TableCell className="text-right">
-                      {r.correctCount} / {r.total}
+                    <TableCell>
+                      <Link href={`/admin/students/${r.userId}`} className="underline-offset-4 hover:underline">
+                        {names[r.userId] ?? r.userId}
+                      </Link>
                     </TableCell>
+                    <TableCell>{titles.get(r.contentId) ?? r.contentId}</TableCell>
+                    <TableCell className="text-right">{r.attempts}回目</TableCell>
                     <TableCell className="text-right font-medium">{r.score}点</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={r.passed ? "default" : "destructive"}>{r.passed ? "合格" : "不合格"}</Badge>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

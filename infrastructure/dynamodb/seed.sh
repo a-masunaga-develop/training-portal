@@ -1,19 +1,35 @@
 #!/bin/bash
 # seed/*.json を DynamoDB に投入する（batch-write-item 形式、1ファイル25件まで）。
 #
-#   ./seed.sh         DynamoDB Local に投入
-#   ./seed.sh --aws   AWS の DynamoDB に投入（実行前に確認あり。--yes で省略）
+#   ./seed.sh                          DynamoDB Local に全テーブルを投入
+#   ./seed.sh --aws                    AWS の DynamoDB に投入（実行前に確認あり。--yes で省略）
+#   ./seed.sh --aws phases contents    指定したテーブルだけ投入（他のテーブルは上書きしない）
 set -euo pipefail
 
 cd "$(dirname "$0")"
 source ./_env.sh "$@"
 
+# テーブル名の指定があればそのファイルだけ、なければ seed/ 配下すべて
+FILES=()
+if [ "${#EXTRA_ARGS[@]}" -gt 0 ]; then
+  for name in "${EXTRA_ARGS[@]}"; do
+    if [ ! -f "seed/${name}.json" ]; then
+      echo "[ERROR] seed/${name}.json がありません" >&2
+      exit 1
+    fi
+    FILES+=("seed/${name}.json")
+  done
+else
+  FILES=(seed/*.json)
+fi
+
+echo "投入するテーブル: $(for f in "${FILES[@]}"; do basename "${f}" .json; done | tr '\n' ' ')"
 confirm_target
 
 TMP_FILE=$(mktemp)
 trap 'rm -f "${TMP_FILE}"' EXIT
 
-for file in seed/*.json; do
+for file in "${FILES[@]}"; do
   table=$(basename "${file}" .json)
   echo "[SEED] ${table}"
 

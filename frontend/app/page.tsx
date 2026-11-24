@@ -3,31 +3,38 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { StatusBadge } from "@/components/status-badge";
 import { requireSessionUser } from "@/lib/auth";
-import { LESSONS } from "@/lib/content";
-import { todayJst } from "@/lib/format";
-import { getProgress, listReports, listTestResults, listTests } from "@/lib/repository";
+import { getCurriculum } from "@/lib/curriculum";
+import { formatDateTime, todayJst } from "@/lib/format";
+import { nextItem } from "@/lib/learning";
+import { listReports, listTestResults } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
 const NOTICES = [
-  { date: "2026-11-20", text: "Phase1 の学習コンテンツ（クラウド / IAM / S3 / EC2）を公開しました。" },
+  { date: "2026-11-24", text: "コンテンツごとに「学習 → テスト → 合格」で進む形式になりました。" },
   { date: "2026-11-20", text: "日報は毎日の学習終了後に登録してください。" },
 ];
 
 export default async function DashboardPage() {
   const user = await requireSessionUser();
-  const [progress, reports, results, tests] = await Promise.all([
-    getProgress(user.userId),
+  const [curriculum, reports, results] = await Promise.all([
+    getCurriculum(user.userId),
     listReports(user.userId),
     listTestResults(user.userId),
-    listTests(),
   ]);
 
+  const titles = new Map(curriculum.items.map((i) => [i.content.contentId, i.content.title]));
+  const inProgress = curriculum.items.filter((i) => i.status === "learning" || i.status === "testing");
+  const next = nextItem(curriculum);
+  const recentCompleted = curriculum.items
+    .filter((i) => i.status === "completed" && i.completedAt)
+    .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
+    .slice(0, 3);
+  const latestResult = results.find((r) => r.contentId);
   const today = todayJst();
   const submittedToday = reports.some((r) => r.date === today);
-  const latestResult = results[0];
-  const remainingLessons = LESSONS.filter((l) => !progress.completedLessons.includes(l.id));
 
   return (
     <div className="space-y-6">
@@ -39,33 +46,36 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardDescription>学習進捗率（Phase1）</CardDescription>
-            <CardTitle className="text-3xl">{progress.completed}%</CardTitle>
+            <CardDescription>学習進捗率</CardDescription>
+            <CardTitle className="text-3xl">{curriculum.rate}%</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Progress value={progress.completed} />
+            <Progress value={curriculum.rate} />
             <p className="text-sm text-muted-foreground">
-              {progress.completedLessons.length} / {LESSONS.length} レッスン完了
+              {curriculum.completedCount} / {curriculum.total} コンテンツ完了
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardDescription>テスト</CardDescription>
-            <CardTitle className="text-3xl">
-              {latestResult ? `${latestResult.score}点` : "未受験"}
-            </CardTitle>
+            <CardDescription>最新テスト結果</CardDescription>
+            <CardTitle className="text-3xl">{latestResult ? `${latestResult.score}点` : "未受験"}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {latestResult
-                ? `最新結果：${latestResult.correctCount} / ${latestResult.total} 問正解`
-                : `Phase1 テスト（全${tests.length}問）を受験していません`}
-            </p>
-            <Button asChild size="sm" variant={latestResult ? "outline" : "default"}>
-              <Link href="/test">{latestResult ? "もう一度受験する" : "受験する"}</Link>
-            </Button>
+          <CardContent className="space-y-2 text-sm">
+            {latestResult ? (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={latestResult.passed ? "default" : "destructive"}>
+                    {latestResult.passed ? "合格" : "不合格"}
+                  </Badge>
+                  <span>{titles.get(latestResult.contentId) ?? latestResult.contentId}</span>
+                </div>
+                <p className="text-muted-foreground">{formatDateTime(latestResult.takenAt)}</p>
+              </>
+            ) : (
+              <p className="text-muted-foreground">コンテンツを学習してテストを受けましょう。</p>
+            )}
           </CardContent>
         </Card>
 
@@ -88,18 +98,77 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>次に学習するレッスン</CardTitle>
+            <CardTitle>次に学習する教材</CardTitle>
           </CardHeader>
           <CardContent>
-            {remainingLessons.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Phase1 のレッスンはすべて完了しました。</p>
+            {next ? (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{next.phase.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{next.content.title}</p>
+                    <StatusBadge status={next.status} />
+                  </div>
+                  {next.content.description && (
+                    <p className="text-sm text-muted-foreground">{next.content.description}</p>
+                  )}
+                </div>
+                <Button asChild>
+                  <Link href={`/contents/${next.content.contentId}`}>
+                    {next.status === "not_started" ? "学習を始める" : "続きから学習する"}
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {curriculum.total === 0
+                  ? "公開中のコンテンツはまだありません。"
+                  : "公開中のコンテンツはすべて完了しました。"}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>現在学習中</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {inProgress.length === 0 ? (
+              <p className="text-sm text-muted-foreground">学習中のコンテンツはありません。</p>
             ) : (
               <ul className="space-y-2">
-                {remainingLessons.map((l) => (
-                  <li key={l.id}>
-                    <Link href={`/phase1/${l.id}`} className="text-sm underline-offset-4 hover:underline">
-                      {l.title}
+                {inProgress.map((i) => (
+                  <li key={i.content.contentId} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <Link href={`/contents/${i.content.contentId}`} className="underline-offset-4 hover:underline">
+                      {i.content.title}
                     </Link>
+                    <StatusBadge status={i.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>最近完了した教材</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentCompleted.length === 0 ? (
+              <p className="text-sm text-muted-foreground">まだ完了した教材はありません。</p>
+            ) : (
+              <ul className="space-y-2">
+                {recentCompleted.map((i) => (
+                  <li key={i.content.contentId} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <Link href={`/contents/${i.content.contentId}`} className="underline-offset-4 hover:underline">
+                      {i.content.title}
+                    </Link>
+                    <span className="text-muted-foreground">
+                      {i.score !== undefined && `${i.score}点・`}
+                      {i.completedAt && formatDateTime(i.completedAt)}
+                    </span>
                   </li>
                 ))}
               </ul>

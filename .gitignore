@@ -35,3 +35,5 @@ build/
 
 # Coverage
 coverage/
+# Local credentials (do not commit)
+ログインユーザパス.txt
