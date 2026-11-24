@@ -9,7 +9,7 @@ applications:
         build:
           commands:
             # Amplify の環境変数は Next.js のサーバー処理から直接読めないため .env.production に書き出す
-            - env | grep -E '^(APP_ENV|APP_REGION|NEXT_PUBLIC_[A-Z_]+|[A-Z_]+_TABLE)=' >> .env.production || true
+            - env | grep -E '^(APP_ENV|APP_REGION|NEXT_PUBLIC_[A-Z_]+|[A-Z_]+_TABLE|CLAUDE_[A-Z_]+)=' >> .env.production || true
             - cat .env.production || true
             - npm run build
       artifacts:

@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/status-badge";
+import { AnalysisView } from "@/components/ai/analysis-view";
+import { RunAiButton } from "@/components/ai/run-ai-button";
+import { isAiConfigured } from "@/lib/ai/client";
+import { getRecommendation } from "@/lib/ai/store";
 import { requireSessionUser } from "@/lib/auth";
 import { getCurriculum } from "@/lib/curriculum";
 import { formatDateTime, todayJst } from "@/lib/format";
@@ -19,10 +23,18 @@ const NOTICES = [
 
 export default async function DashboardPage() {
   const user = await requireSessionUser();
-  const [curriculum, reports, results] = await Promise.all([
+  const aiEnabled = isAiConfigured();
+  const [curriculum, reports, results, recommendation] = await Promise.all([
     getCurriculum(user.userId),
     listReports(user.userId),
     listTestResults(user.userId),
+    // AI 用テーブルの不備などでダッシュボード全体が表示できなくならないようにする
+    aiEnabled
+      ? getRecommendation(user.userId).catch((e) => {
+          console.error(e);
+          return null;
+        })
+      : Promise.resolve(null),
   ]);
 
   const titles = new Map(curriculum.items.map((i) => [i.content.contentId, i.content.title]));
@@ -94,6 +106,34 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {aiEnabled && curriculum.total > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>AI学習サポート</CardTitle>
+                <Badge variant="secondary">Claude</Badge>
+              </div>
+              <RunAiButton
+                url="/api/ai/analysis"
+                label={recommendation ? "分析を更新" : "AIで分析する"}
+                variant={recommendation ? "outline" : "default"}
+              />
+            </div>
+            {!recommendation && (
+              <CardDescription>
+                進捗・テスト結果・日報から、AI が理解度を分析し、次に学ぶべき教材をおすすめします。
+              </CardDescription>
+            )}
+          </CardHeader>
+          {recommendation && (
+            <CardContent>
+              <AnalysisView rec={recommendation} titles={titles} linkContents />
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

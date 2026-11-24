@@ -6,6 +6,7 @@ import {
   PutCommand,
   QueryCommand,
   ScanCommand,
+  UpdateCommand,
   type QueryCommandInput,
   type ScanCommandInput,
 } from "@aws-sdk/lib-dynamodb";
@@ -173,9 +174,28 @@ export async function saveContent(
   contentId?: string,
 ): Promise<Content> {
   if (!(await getPhase(input.phaseId))) throw new InputError("対象フェーズが存在しません");
-  const content: Content = { ...input, contentId: contentId ?? newId("c") };
+  // 字幕・教材テキストはコンテンツの編集フォームでは扱わないため、更新時は既存の値を引き継ぐ
+  const existing = contentId ? await getContent(contentId) : null;
+  const content: Content = {
+    ...input,
+    transcript: input.transcript ?? existing?.transcript,
+    contentId: contentId ?? newId("c"),
+  };
   await ddb.send(new PutCommand({ TableName: TABLES.contents, Item: content }));
   return content;
+}
+
+/** AI テスト生成用の字幕・教材テキストを保存する */
+export async function saveTranscript(contentId: string, transcript: string): Promise<void> {
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TABLES.contents,
+      Key: { contentId },
+      UpdateExpression: "SET transcript = :t",
+      ConditionExpression: "attribute_exists(contentId)",
+      ExpressionAttributeValues: { ":t": transcript },
+    }),
+  );
 }
 
 /** コンテンツと、その問題をまとめて削除する */

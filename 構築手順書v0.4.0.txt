@@ -1,0 +1,697 @@
+# Training Portal v0.4.0 開発計画
+
+## 概要
+
+v0.4.0では、v0.3.0で構築した「コンテンツ単位の学習管理システム」をベースに、AIを活用した学習支援機能を実装する。
+
+本バージョンの目的は、研修担当者による問題作成負荷を削減し、受講者ごとの理解度を可視化することである。
+
+v0.4.0から研修ポータルは単なるLMSではなく、AI駆動型LMS（Learning Management System）へ進化する。
+
+---
+
+# テーマ
+
+「AI学習支援プラットフォームへの進化」
+
+---
+
+# コンセプト
+
+管理者
+
+```text
+動画URL登録
+↓
+AIが字幕取得
+↓
+AIが理解度テスト生成
+↓
+公開
+```
+
+受講者
+
+```text
+学習
+↓
+テスト
+↓
+完了
+```
+
+システム
+
+```text
+学習履歴
++
+テスト結果
++
+日報
+↓
+AI分析
+↓
+学習支援
+```
+
+---
+
+# v0.4.0対象機能
+
+## AIテスト自動生成
+
+### 目的
+
+テスト作成工数削減
+
+---
+
+### 学習フロー
+
+```text
+管理者
+
+コンテンツ登録
+↓
+動画URL登録
+↓
+AIテスト生成
+↓
+公開
+```
+
+---
+
+### 処理フロー
+
+```text
+動画URL
+↓
+字幕取得
+↓
+学習ポイント抽出
+↓
+問題生成
+↓
+tests登録
+```
+
+---
+
+# 字幕取得
+
+## 対象
+
+```text
+YouTube
+
+AWS Skill Builder
+
+その他字幕取得可能な動画
+```
+
+---
+
+## 処理
+
+```text
+動画URL
+↓
+字幕取得
+↓
+全文テキスト化
+```
+
+---
+
+例
+
+```text
+IAMはAWSの認証認可サービスです。
+
+IAMには
+
+ユーザー
+グループ
+ロール
+ポリシー
+
+があります。
+```
+
+---
+
+# AI学習ポイント抽出
+
+入力
+
+```text
+字幕全文
+```
+
+---
+
+出力
+
+```json
+{
+  "topics": [
+    "IAM",
+    "ロール",
+    "ポリシー",
+    "最小権限"
+  ]
+}
+```
+
+---
+
+# AIテスト生成
+
+入力
+
+```text
+字幕
+
+学習ポイント
+```
+
+---
+
+出力
+
+```json
+[
+  {
+    "question": "IAMとは何ですか？",
+    "choices": [
+      "...",
+      "...",
+      "...",
+      "..."
+    ],
+    "answer": 1,
+    "explanation": "..."
+  }
+]
+```
+
+---
+
+## 問題数
+
+デフォルト
+
+```text
+選択問題 5問
+```
+
+---
+
+## 管理者確認
+
+生成後
+
+```text
+保存
+
+編集
+
+再生成
+```
+
+可能
+
+---
+
+# AI理解度分析
+
+## 目的
+
+受講者の苦手分野把握
+
+---
+
+入力
+
+```text
+テスト結果
+
+学習履歴
+
+日報
+```
+
+---
+
+出力
+
+```text
+IAM 理解済み
+
+S3 理解済み
+
+EC2 理解不足
+
+VPC 理解不足
+```
+
+---
+
+# AI学習推薦
+
+## 目的
+
+次に学ぶべき教材提示
+
+---
+
+入力
+
+```text
+進捗
+
+テスト結果
+
+理解度
+```
+
+---
+
+出力
+
+```text
+推奨教材
+
+VPC基礎
+
+Security Group
+
+Route Table
+```
+
+---
+
+# AI管理レポート
+
+## 目的
+
+管理者負荷軽減
+
+---
+
+入力
+
+```text
+全受講者
+
+進捗
+
+テスト結果
+
+日報
+```
+
+---
+
+出力
+
+```text
+受講者数
+10名
+
+完了
+6名
+
+遅延
+2名
+
+未開始
+2名
+
+共通課題
+
+ネットワーク理解不足
+```
+
+---
+
+# DynamoDB追加
+
+## ai_generation_jobs
+
+AI実行履歴
+
+```json
+{
+  "jobId": "job001",
+  "contentId": "c001",
+  "type": "test_generation",
+  "status": "completed",
+  "createdAt": "..."
+}
+```
+
+---
+
+## recommendations
+
+学習推薦
+
+```json
+{
+  "userId": "u001",
+  "recommendedContents": [
+    "c010",
+    "c011"
+  ]
+}
+```
+
+---
+
+# AWS構成
+
+## v0.3.0
+
+```text
+Amplify
+↓
+Cognito
+↓
+Next.js
+↓
+DynamoDB
+```
+
+---
+
+## v0.4.0
+
+```text
+Amplify
+↓
+Cognito
+↓
+Next.js
+↓
+DynamoDB
+
+       ↓
+
+Claude API
+
+       ↓
+
+字幕取得Lambda
+```
+
+---
+
+# AIテスト生成アーキテクチャ
+
+```text
+管理者
+
+動画URL登録
+        ↓
+
+contents
+        ↓
+
+EventBridge
+
+        ↓
+
+Lambda
+
+        ↓
+
+字幕取得
+
+        ↓
+
+Claude API
+
+        ↓
+
+問題生成
+
+        ↓
+
+tests
+```
+
+---
+
+# Dashboard改善
+
+追加項目
+
+```text
+AIおすすめ教材
+
+理解度分析
+
+最近の弱点
+
+次の推奨コンテンツ
+```
+
+---
+
+# 管理画面
+
+追加機能
+
+```text
+Admin
+├─ AIテスト生成
+├─ AIレポート
+├─ AI理解度分析
+└─ AI設定
+```
+
+---
+
+# 権限制御
+
+## student
+
+利用可能
+
+```text
+AIおすすめ教材
+
+理解度分析
+```
+
+---
+
+## admin
+
+利用可能
+
+```text
+全AI機能
+```
+
+---
+
+# Git運用
+
+開発ブランチ
+
+```text
+feature/ai-learning
+```
+
+---
+
+マージ
+
+```text
+feature/ai-learning
+↓
+develop
+↓
+main
+```
+
+---
+
+# コスト想定
+
+受講者
+
+```text
+10名
+```
+
+---
+
+月間想定
+
+```text
+日報分析
+
+理解度分析
+
+学習推薦
+
+AIテスト生成
+```
+
+---
+
+想定コスト
+
+```text
+月額
+
+500円〜3,000円
+```
+
+---
+
+# v0.4.0 完了条件
+
+✅ 字幕自動取得
+
+✅ AI学習ポイント抽出
+
+✅ AIテスト生成
+
+✅ AI理解度分析
+
+✅ AI学習推薦
+
+✅ AI管理レポート
+
+✅ Claude API連携
+
+✅ DynamoDB連携
+
+✅ AWS公開
+
+---
+
+# リリース成果
+
+v0.4.0により、研修ポータルはAI駆動型LMSへ進化する。
+
+管理者は動画URLを登録するだけで、
+
+・字幕取得
+・学習ポイント抽出
+・テスト生成
+
+を自動実行できる。
+
+受講者は、
+
+学習
+↓
+テスト
+↓
+完了
+
+に加えて、
+
+・理解度分析
+・学習推薦
+
+を受けられるようになる。
+
+これにより、研修運営と学習支援の双方をAIで自動化する基盤が完成する。
+---
+
+# 実装メモ（実際の構成）
+
+## 計画からの変更・補足
+
+```text
+字幕取得       他者の YouTube 動画・AWS Skill Builder の字幕は公式の方法で自動取得できないため、
+               「コンテンツ本文」＋「管理者が貼り付けた字幕・教材テキスト（transcript）」を元に生成する。
+               YouTube は動画ページの「文字起こしを表示」からコピーできる。
+
+構成           EventBridge + Lambda は使わず、Next.js の Route Handler から Claude API を直接呼ぶ。
+               Amplify はストリーミングとレスポンス後の処理に非対応のため、
+               テスト生成は「学習ポイント抽出」「問題生成」の2回の呼び出しに分けて1回の処理時間を短くする。
+
+モデル         Claude Opus 5.5（claude-opus-5-5）。環境変数 CLAUDE_MODEL で変更可能。
+               安全分類器に拒否された場合は server-side fallback（fallbacks: "default"）で自動再実行。
+               出力は構造化出力（JSON スキーマ）で受け取り、内容をコード側で検証する。
+
+API キー       本番：SSM パラメータストア（SecureString）/training-portal/anthropic-api-key
+                     環境変数 CLAUDE_API_KEY_PARAMETER にパラメータ名を設定
+               ローカル：frontend/.env.local の ANTHROPIC_API_KEY（コミットしない）
+
+理解度分析・学習推薦
+               1回の呼び出しでまとめて実行し、recommendations テーブルに保存。
+               受講者はダッシュボードから実行（10分に1回まで）、管理者は受講者ごとに実行可能。
+               推奨コンテンツは受講可能なものだけに絞り込む。
+
+管理レポート   人数（完了・順調・遅延・未開始）はコードで集計し、AI は文章（全体の状況・共通課題・
+               フォローが必要な受講者・対応案）だけを作る。遅延＝最後の学習から7日以上。
+
+AI設定         設定値は環境変数で管理し、画面では状態・モデル・今月の利用量（トークン・費用の目安）・
+               実行履歴を表示する。
+```
+
+## 画面
+
+```text
+/                              ダッシュボードに「AI学習サポート」（おすすめ教材・次の推奨・最近の弱点・理解度分析）
+/admin/contents/[contentId]    下部に「AIテスト生成」（字幕貼り付け → 学習ポイント抽出 → 問題生成 → 確認・編集 → 登録 / 再生成）
+/admin/ai                      AIテスト生成（コンテンツ一覧・字幕と問題の登録状況）
+/admin/ai/report               AI管理レポート
+/admin/ai/analysis             AI理解度分析（受講者一覧・分析の実行）
+/admin/ai/settings             AI設定・利用状況・実行履歴
+/admin/students/[userId]       受講者の AI 理解度分析
+```
+
+## DynamoDB テーブル
+
+```text
+ai_generation_jobs  jobId（type / status / model / トークン数 / エラー / 出力）
+recommendations     userId（理解度・弱点・推奨コンテンツ・アドバイス）
+contents            transcript 属性を追加
+```
+
+## AWS 反映手順
+
+1. admin ユーザーで Claude API キーを SSM に登録
+
+```text
+Systems Manager → パラメータストア → パラメータの作成
+  名前     : /training-portal/anthropic-api-key
+  タイプ   : SecureString（KMS キーは aws/ssm のまま）
+  値       : Claude Console で発行した API キー
+  リージョン: ap-northeast-1
+```
+
+2. admin ユーザーで IAM ポリシーを更新
+
+```text
+TrainingPortalDynamoDBAccess（コンピューティングロール）
+  → infrastructure/iam/amplify-compute-role-policy.json
+    （AI 用テーブル2つ、UpdateItem、SSM パラメータの読み取りを追加）
+
+TrainingPortalDeveloper（develop-group）
+  → infrastructure/iam/training-portal-developer-policy.json
+    （AI 用テーブル2つを追加）
+```
+
+3. テーブル作成と環境変数（develop ユーザー）
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" ./infrastructure/dynamodb/init.sh --aws
+```
+
+```text
+Amplify 環境変数に追加
+  CLAUDE_API_KEY_PARAMETER=/training-portal/anthropic-api-key
+```
+
+4. feature/ai-learning → develop → main にマージ（Amplify が自動ビルド）
