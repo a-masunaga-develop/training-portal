@@ -28,10 +28,13 @@ type Props = {
 
 type Busy = null | "save" | "topics" | "questions" | "register";
 
+/** 1回の API 呼び出しで生成する問題数（サーバー側 MAX_QUESTIONS_PER_CALL と合わせる） */
+const BATCH_SIZE = 3;
+
 const BUSY_LABELS: Record<Exclude<Busy, null>, string> = {
   save: "保存中...",
   topics: "AI が学習ポイントを抽出しています（10〜30秒ほどかかります）...",
-  questions: "AI が問題を作成しています（20〜60秒ほどかかります）...",
+  questions: "AI が問題を作成しています（3問ごとに15〜25秒ほどかかります）...",
   register: "問題を登録しています...",
 };
 
@@ -49,6 +52,7 @@ export function AiTestGenerator({ contentId, initialTranscript, hasBody }: Props
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
 
   const run = async (kind: Exclude<Busy, null>, fn: () => Promise<string | void>) => {
     setBusy(kind);
@@ -92,12 +96,28 @@ export function AiTestGenerator({ contentId, initialTranscript, hasBody }: Props
     run("questions", async () => {
       const err = await saveTranscriptIfChanged();
       if (err) return err;
-      const res = await sendJson<{ questions: Omit<Question, "selected">[] }>(`${base}/questions`, "POST", {
-        topics,
-        count,
-      });
-      if (!res.ok) return res.error;
-      setQuestions(res.data.questions.map((q) => ({ ...q, selected: true })));
+      setQuestions([]);
+
+      // 時間切れを避けるため、少しずつ分けて生成する（前に作った問題と重ならないよう伝える）
+      const generated: Omit<Question, "selected">[] = [];
+      while (generated.length < count) {
+        setProgress(`${generated.length} / ${count} 問`);
+        const res = await sendJson<{ questions: Omit<Question, "selected">[] }>(`${base}/questions`, "POST", {
+          topics,
+          count: Math.min(BATCH_SIZE, count - generated.length),
+          avoid: generated.map((q) => q.question),
+        });
+        if (!res.ok) {
+          // それまでに生成できた分は残す
+          setQuestions(generated.map((q) => ({ ...q, selected: true })));
+          setProgress(null);
+          return generated.length ? `${generated.length}問まで生成しました。続きでエラー：${res.error}` : res.error;
+        }
+        if (res.data.questions.length === 0) break;
+        generated.push(...res.data.questions);
+        setQuestions(generated.map((q) => ({ ...q, selected: true })));
+      }
+      setProgress(null);
     });
 
   const onRegister = () =>
@@ -243,7 +263,12 @@ export function AiTestGenerator({ contentId, initialTranscript, hasBody }: Props
           </section>
         )}
 
-        {busy && <p className="text-sm text-muted-foreground">{BUSY_LABELS[busy]}</p>}
+        {busy && (
+          <p className="text-sm text-muted-foreground">
+            {BUSY_LABELS[busy]}
+            {busy === "questions" && progress && `（生成済み ${progress}）`}
+          </p>
+        )}
         {error && <p className="whitespace-pre-line text-sm text-destructive">{error}</p>}
         {message && <p className="text-sm text-muted-foreground">{message}</p>}
 

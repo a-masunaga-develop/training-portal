@@ -102,19 +102,31 @@ function validQuestions(questions: GeneratedQuestion[]): GeneratedQuestion[] {
     );
 }
 
+/**
+ * 1回の呼び出しで作る問題数の上限。
+ * Amplify（CloudFront）は約30秒で応答を打ち切るため、5問を1回で作る（約30秒）と時間切れになりやすい。
+ * 画面側でこの数ずつ分けて呼び出す。
+ */
+export const MAX_QUESTIONS_PER_CALL = 3;
+
 export async function generateQuestions(
   content: Content,
   topics: string[],
   count: number,
   existing: Test[],
   requestedBy: string,
+  /** 今回すでに生成した問題文（分割生成で重複を避けるため） */
+  avoid: string[] = [],
 ) {
-  if (!Number.isInteger(count) || count < 1 || count > 10) throw new InputError("問題数は1〜10で指定してください");
+  if (!Number.isInteger(count) || count < 1 || count > MAX_QUESTIONS_PER_CALL) {
+    throw new InputError(`1回に生成できる問題数は1〜${MAX_QUESTIONS_PER_CALL}問です`);
+  }
   const cleanTopics = topics.map((t) => t.trim()).filter(Boolean);
   if (cleanTopics.length === 0) throw new InputError("学習ポイントを1つ以上指定してください");
 
-  const existingBlock = existing.length
-    ? `\n<登録済みの問題>\n${existing.map((t, i) => `${i + 1}. ${t.question}`).join("\n")}\n</登録済みの問題>\n登録済みの問題と同じ内容を問う問題は作らないでください。\n`
+  const others = [...existing.map((t) => t.question), ...avoid.map((q) => q.trim()).filter(Boolean)];
+  const existingBlock = others.length
+    ? `\n<作成済みの問題>\n${others.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n</作成済みの問題>\n作成済みの問題と同じ内容を問う問題は作らず、まだ問われていない学習ポイントを優先してください。\n`
     : "";
 
   const { jobId, output } = await runStructured({

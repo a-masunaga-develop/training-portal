@@ -93,6 +93,12 @@
           "iam:PassedToService": "amplify.amazonaws.com"
         }
       }
+    },
+    {
+      "Sid": "ReadClaudeApiKeyForLocalDev",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:ap-northeast-1:696741018920:parameter/training-portal/anthropic-api-key"
     }
   ]
 }
