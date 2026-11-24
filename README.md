@@ -1,5 +1,21 @@
 Release History
 
+v0.4.0
+2026-11-24
+
+Features
+- AI test generation: transcript / course text -> learning points -> 4-choice questions -> review, edit, register (or regenerate)
+- AI learning analysis & recommendations: understanding per content, recent weak points, recommended next content
+- AI admin report: student status counts (computed), common issues, students needing follow-up, suggested actions
+- AI settings: status, model, monthly usage and cost estimate, execution history
+- Dashboard "AI learning support" card; Admin "AI" tab
+
+Infrastructure
+- Claude API (claude-opus-5-5) called directly from Next.js route handlers, structured outputs, server-side fallback
+- API key stored in SSM Parameter Store (SecureString), read by the Amplify compute role
+- New DynamoDB tables: ai_generation_jobs / recommendations; contents.transcript
+- Question generation split into 3-question calls to stay within the ~30s response limit
+
 v0.3.0
 2026-11-24
 
