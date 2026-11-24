@@ -42,6 +42,9 @@ export function errorResponse(error: unknown, status = 500) {
   if (error instanceof Error && error.name === "InputError") {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+  if (error instanceof Error && error.name === "AiError") {
+    return NextResponse.json({ error: error.message }, { status: (error as Error & { status?: number }).status ?? 502 });
+  }
   console.error(error);
   return NextResponse.json({ error: toMessage(error) }, { status });
 }

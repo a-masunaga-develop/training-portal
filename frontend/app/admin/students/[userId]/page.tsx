@@ -6,6 +6,10 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ReportList } from "@/components/report-list";
 import { StatusBadge } from "@/components/status-badge";
+import { AnalysisView } from "@/components/ai/analysis-view";
+import { RunAiButton } from "@/components/ai/run-ai-button";
+import { isAiConfigured } from "@/lib/ai/client";
+import { getRecommendation } from "@/lib/ai/store";
 import { getCurriculum } from "@/lib/curriculum";
 import { formatDateTime } from "@/lib/format";
 import { getUser, listReports, listTestResults } from "@/lib/repository";
@@ -17,10 +21,12 @@ export default async function AdminStudentPage({ params }: { params: Promise<{ u
   const user = await getUser(userId);
   if (!user) notFound();
 
-  const [curriculum, results, reports] = await Promise.all([
+  const aiEnabled = isAiConfigured();
+  const [curriculum, results, reports, recommendation] = await Promise.all([
     getCurriculum(userId),
     listTestResults(userId),
     listReports(userId),
+    aiEnabled ? getRecommendation(userId) : Promise.resolve(null),
   ]);
   const titles = new Map(curriculum.items.map((i) => [i.content.contentId, i.content.title]));
   const attemptsByContent = new Map<string, number>();
@@ -52,6 +58,31 @@ export default async function AdminStudentPage({ params }: { params: Promise<{ u
           </p>
         </CardContent>
       </Card>
+
+      {aiEnabled && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">AI理解度分析</CardTitle>
+                <Badge variant="secondary">Claude</Badge>
+              </div>
+              <RunAiButton
+                url={`/api/admin/ai/analysis/${encodeURIComponent(user.userId)}`}
+                label={recommendation ? "再分析" : "分析する"}
+                variant={recommendation ? "outline" : "default"}
+              />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recommendation ? (
+              <AnalysisView rec={recommendation} titles={titles} />
+            ) : (
+              <p className="text-sm text-muted-foreground">まだ分析していません。</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

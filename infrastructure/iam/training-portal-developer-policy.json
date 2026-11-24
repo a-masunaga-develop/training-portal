@@ -34,7 +34,11 @@
         "arn:aws:dynamodb:ap-northeast-1:696741018920:table/content_progress",
         "arn:aws:dynamodb:ap-northeast-1:696741018920:table/content_progress/index/*",
         "arn:aws:dynamodb:ap-northeast-1:696741018920:table/progress",
-        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/progress/index/*"
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/progress/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/ai_generation_jobs",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/ai_generation_jobs/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/recommendations",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/recommendations/index/*"
       ]
     },
     {
@@ -89,6 +93,12 @@
           "iam:PassedToService": "amplify.amazonaws.com"
         }
       }
+    },
+    {
+      "Sid": "ReadClaudeApiKeyForLocalDev",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:ap-northeast-1:696741018920:parameter/training-portal/anthropic-api-key"
     }
   ]
 }
