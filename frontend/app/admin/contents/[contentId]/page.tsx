@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContentForm } from "@/components/admin/content-form";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { TestManager } from "@/components/admin/test-manager";
+import { AiTestGenerator } from "@/components/admin/ai-test-generator";
+import { AiNotConfigured } from "@/components/admin/ai-not-configured";
+import { isAiConfigured } from "@/lib/ai/client";
 import { getContent, listPhases, listTestsByContent } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +51,16 @@ export default async function EditContentPage({ params }: { params: Promise<{ co
       </Card>
 
       <TestManager contentId={content.contentId} passScore={content.passScore} tests={tests} />
+
+      {isAiConfigured() ? (
+        <AiTestGenerator
+          contentId={content.contentId}
+          initialTranscript={content.transcript ?? ""}
+          hasBody={Boolean(content.body?.trim())}
+        />
+      ) : (
+        <AiNotConfigured />
+      )}
     </div>
   );
 }

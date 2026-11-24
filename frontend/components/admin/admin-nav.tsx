@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/phases", label: "Phase管理" },
   { href: "/admin/contents", label: "コンテンツ・テスト管理" },
   { href: "/admin/students", label: "受講者・進捗管理" },
+  { href: "/admin/ai", label: "AI" },
 ];
 
 export function AdminNav() {

@@ -48,6 +48,8 @@ export type Content = {
   url: string;
   /** 社内教材・演習課題の本文（「## 見出し」「- 箇条書き」を解釈する） */
   body: string;
+  /** AI テスト生成の元にする字幕・教材テキスト（受講者には表示しない） */
+  transcript?: string;
   /** 合格点（0〜100） */
   passScore: number;
   order: number;

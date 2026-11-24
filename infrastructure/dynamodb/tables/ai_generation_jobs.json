@@ -1,0 +1,16 @@
+{
+  "TableName": "ai_generation_jobs",
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "jobId",
+      "AttributeType": "S"
+    }
+  ],
+  "KeySchema": [
+    {
+      "AttributeName": "jobId",
+      "KeyType": "HASH"
+    }
+  ],
+  "BillingMode": "PAY_PER_REQUEST"
+}

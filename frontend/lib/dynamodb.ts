@@ -33,4 +33,6 @@ export const TABLES = {
   tests: process.env.TESTS_TABLE ?? "tests",
   testResults: process.env.TEST_RESULTS_TABLE ?? "test_results",
   contentProgress: process.env.CONTENT_PROGRESS_TABLE ?? "content_progress",
+  aiJobs: process.env.AI_JOBS_TABLE ?? "ai_generation_jobs",
+  recommendations: process.env.RECOMMENDATIONS_TABLE ?? "recommendations",
 } as const;
