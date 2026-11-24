@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 import type { PublicTest, TestResult } from "@/lib/types";
 
-export function TestForm({ tests }: { tests: PublicTest[] }) {
+type Props = {
+  contentId: string;
+  tests: PublicTest[];
+  next?: { contentId: string; title: string };
+};
+
+export function ContentTestForm({ contentId, tests, next }: Props) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<TestResult | null>(null);
@@ -21,7 +28,7 @@ export function TestForm({ tests }: { tests: PublicTest[] }) {
   const submit = () =>
     startTransition(async () => {
       setError(null);
-      const res = await fetch("/api/test-results", {
+      const res = await fetch(`/api/contents/${encodeURIComponent(contentId)}/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers }),
@@ -44,18 +51,45 @@ export function TestForm({ tests }: { tests: PublicTest[] }) {
   if (result) {
     return (
       <div className="space-y-4">
-        <Card>
+        <Card className={result.passed ? "border-primary" : "border-destructive"}>
           <CardHeader>
-            <CardDescription>採点結果</CardDescription>
-            <CardTitle className="text-3xl">{result.score}点</CardTitle>
+            <CardDescription>
+              採点結果（{result.attempts}回目）・合格点 {result.passScore}点
+            </CardDescription>
+            <div className="flex flex-wrap items-center gap-3">
+              <CardTitle className="text-3xl">{result.score}点</CardTitle>
+              <Badge variant={result.passed ? "default" : "destructive"} className="text-sm">
+                {result.passed ? "合格" : "不合格"}
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {result.correctCount} / {result.total} 問正解
-            </span>
-            <Button variant="outline" size="sm" onClick={retry}>
-              もう一度受験する
-            </Button>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              {result.correctCount} / {result.total} 問正解。
+              {result.passed
+                ? "このコンテンツは完了です。"
+                : "解説を確認して、もう一度挑戦してください。"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {result.passed && next && (
+                <Button asChild>
+                  <Link href={`/contents/${next.contentId}`}>次へ：{next.title}</Link>
+                </Button>
+              )}
+              {result.passed && !next && (
+                <Button asChild>
+                  <Link href="/">ダッシュボードへ</Link>
+                </Button>
+              )}
+              <Button variant="outline" onClick={retry}>
+                もう一度受験する
+              </Button>
+              {!result.passed && (
+                <Button asChild variant="ghost">
+                  <Link href={`/contents/${contentId}`}>教材を見直す</Link>
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -70,9 +104,7 @@ export function TestForm({ tests }: { tests: PublicTest[] }) {
               </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p>
-                あなたの回答：{d.selected === null ? "未回答" : d.choices[d.selected]}
-              </p>
+              <p>あなたの回答：{d.selected === null ? "未回答" : d.choices[d.selected]}</p>
               {!d.correct && <p>正解：{d.choices[d.answer]}</p>}
               {d.explanation && <p className="text-muted-foreground">解説：{d.explanation}</p>}
             </CardContent>

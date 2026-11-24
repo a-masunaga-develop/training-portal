@@ -9,8 +9,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "ダッシュボード", adminOnly: false },
-  { href: "/phase1", label: "Phase1", adminOnly: false },
-  { href: "/test", label: "テスト", adminOnly: false },
+  { href: "/phases", label: "学習", adminOnly: false },
   { href: "/reports", label: "日報", adminOnly: false },
   { href: "/admin", label: "管理画面", adminOnly: true },
 ];
@@ -20,7 +19,12 @@ type HeaderUser = { email: string; isAdmin: boolean } | null;
 export function SiteHeader({ user }: { user: HeaderUser }) {
   const pathname = usePathname();
   const [signingOut, setSigningOut] = useState(false);
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isActive = (href: string) =>
+    href === "/"
+      ? pathname === "/"
+      : href === "/phases"
+        ? pathname.startsWith("/phases") || pathname.startsWith("/contents")
+        : pathname.startsWith(href);
 
   const onSignOut = async () => {
     setSigningOut(true);

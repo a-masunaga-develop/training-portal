@@ -1,0 +1,587 @@
+# Training Portal v0.3.0 開発計画（確定版）
+
+## 概要
+
+v0.3.0では、研修ポータルを「Phase管理システム」から「コンテンツ単位の学習管理システム」へ進化させる。
+
+これまでの設計では、Phase完了を基準としていたが、実際の学習ではコンテンツごとの理解度確認が重要である。
+
+そのため、
+
+学習
+↓
+テスト
+↓
+合格
+↓
+完了
+
+という学習サイクルをコンテンツ単位で管理する。
+
+---
+
+# v0.3.0 テーマ
+
+「コンテンツ単位の学習管理システムへの進化」
+
+---
+
+# コンセプト
+
+受講者は以下の流れで学習する。
+
+```text
+コンテンツ受講
+↓
+理解度テスト受験
+↓
+合格
+↓
+コンテンツ完了
+↓
+次のコンテンツへ進む
+```
+
+コンテンツ単位で進捗を管理し、学習状況を可視化する。
+
+---
+
+# 学習フロー
+
+## 現行
+
+```text
+Phase1
+├─ IAM
+├─ S3
+├─ EC2
+└─ テスト
+
+Phase2
+├─ 動画A
+├─ 動画B
+└─ テスト
+```
+
+---
+
+## v0.3.0
+
+```text
+Phase1
+├─ IAM
+│   ├─ 学習
+│   └─ テスト
+│
+├─ S3
+│   ├─ 学習
+│   └─ テスト
+│
+└─ EC2
+    ├─ 学習
+    └─ テスト
+```
+
+---
+
+# Phase設計
+
+## Phase1
+
+教材未定
+
+対応可能なコンテンツ
+
+```text
+動画
+
+PDF
+
+外部教材
+
+社内教材
+```
+
+---
+
+## Phase2
+
+外部動画サイト利用
+
+例
+
+```text
+Udemy
+
+AWS Skill Builder
+
+YouTube
+
+ドットインストール
+
+Progate
+```
+
+---
+
+## Phase3
+
+```text
+外部動画
++
+演習課題
+```
+
+---
+
+# DynamoDB設計
+
+## phases
+
+学習フェーズ管理
+
+```json
+{
+  "phaseId": "phase1",
+  "title": "AWS基礎",
+  "description": "AWS学習フェーズ",
+  "order": 1,
+  "published": true
+}
+```
+
+---
+
+## contents
+
+学習コンテンツ管理
+
+```json
+{
+  "contentId": "c001",
+  "phaseId": "phase2",
+  "title": "IAM入門",
+  "type": "video",
+  "url": "https://example.com",
+  "passScore": 80,
+  "order": 1,
+  "published": true
+}
+```
+
+---
+
+## tests
+
+コンテンツ単位で管理
+
+```json
+{
+  "testId": "t001",
+  "contentId": "c001",
+  "question": "...",
+  "choices": [],
+  "answer": 1,
+  "explanation": "..."
+}
+```
+
+---
+
+## test_results
+
+受験結果
+
+```json
+{
+  "resultId": "r001",
+  "userId": "u001",
+  "contentId": "c001",
+  "score": 90,
+  "passed": true,
+  "attempts": 1
+}
+```
+
+---
+
+## progress
+
+最大の変更点
+
+Phaseではなくコンテンツ単位で管理
+
+```json
+{
+  "userId": "u001",
+  "contentId": "c001",
+  "status": "completed",
+  "score": 90,
+  "completedAt": "2026-11-21T10:00:00Z"
+}
+```
+
+---
+
+# 進捗ステータス
+
+## not_started
+
+```text
+未着手
+```
+
+---
+
+## learning
+
+```text
+受講中
+```
+
+---
+
+## testing
+
+```text
+テスト受験中
+```
+
+---
+
+## completed
+
+```text
+完了
+```
+
+---
+
+# 管理画面
+
+## 構成
+
+```text
+Admin
+├─ Phase管理
+├─ コンテンツ管理
+├─ テスト管理
+├─ 受講者管理
+└─ 進捗管理
+```
+
+---
+
+# コンテンツ管理
+
+管理者はコード変更なしで管理可能。
+
+## 登録項目
+
+```text
+タイトル
+
+説明
+
+対象Phase
+
+コンテンツ種別
+
+動画URL
+
+合格点
+
+表示順
+
+公開状態
+```
+
+---
+
+# コンテンツ種別
+
+```text
+video
+
+external
+
+pdf
+
+assignment
+
+exam
+```
+
+---
+
+# テスト管理
+
+各コンテンツごとにテストを登録する。
+
+例
+
+```text
+IAM
+↓
+問題3〜5問
+
+S3
+↓
+問題3〜5問
+
+EC2
+↓
+問題3〜5問
+```
+
+---
+
+# 受講制御
+
+## 受講者
+
+```text
+IAM
+↓
+合格
+
+S3
+↓
+解放
+
+EC2
+↓
+未解放
+```
+
+前のコンテンツを完了しないと次へ進めない。
+
+---
+
+# Dashboard改善
+
+表示内容
+
+```text
+現在学習中
+
+次に学習する教材
+
+最近完了した教材
+
+学習進捗率
+
+最新テスト結果
+```
+
+---
+
+# 進捗率計算
+
+例
+
+```text
+IAM      完了
+S3       完了
+EC2      受講中
+VPC      未開始
+```
+
+4コンテンツ中
+
+```text
+2 / 4 完了
+
+進捗率 50%
+```
+
+---
+
+# 権限制御
+
+## student
+
+利用可能
+
+```text
+Dashboard
+
+Phase
+
+Content
+
+Test
+
+Report
+```
+
+---
+
+## admin
+
+利用可能
+
+```text
+全機能
+```
+
+---
+
+# Git運用
+
+開発ブランチ
+
+```text
+feature/content-management
+```
+
+マージ
+
+```text
+feature/content-management
+↓
+develop
+↓
+main
+```
+
+---
+
+# v0.3.0 完了条件
+
+✅ Phase管理
+
+✅ コンテンツ管理
+
+✅ コンテンツ単位の進捗管理
+
+✅ 動画URL管理
+
+✅ テスト管理
+
+✅ コンテンツ単位の合格判定
+
+✅ 次コンテンツ解放
+
+✅ Dashboard改善
+
+✅ DynamoDB対応
+
+✅ AWS公開
+
+---
+
+# リリース成果
+
+v0.3.0により、研修ポータルは「コンテンツ単位の学習管理システム」へ進化する。
+
+管理者は、
+
+・学習コンテンツ作成
+・動画URL登録
+・テスト登録
+
+を管理画面だけで実施できる。
+
+受講者は、
+
+受講
+↓
+テスト
+↓
+合格
+↓
+完了
+↓
+次へ
+
+という一貫した学習フローで学習できる。
+
+これにより、v0.4.0で計画している
+
+・AIテスト生成
+・AI理解度分析
+・AI学習推薦
+
+の実装基盤が完成する。
+---
+
+# 実装メモ（実際の構成）
+
+## 計画からの変更・補足
+
+```text
+進捗テーブル   progress（キー userId のみ）はコンテンツ単位にできないため、
+               新テーブル content_progress（userId + contentId）を作成。
+               旧 progress テーブルは削除せず残す（アプリからは使用しない）。
+
+コンテンツ種別 計画の5種別に text（社内教材）を追加。
+               既存の4レッスン（クラウド / IAM / S3 / EC2）を Phase1 の
+               text コンテンツ c001〜c004 として移行。
+
+テスト         各コンテンツ3問（既存5問を振り分け、7問を追加）。
+
+受講制御       公開中のフェーズ順 → コンテンツ順に並べ、前を完了しないと
+               次は開けない（フェーズをまたいで順番に進む）。
+               admin は非公開・未解放もプレビュー可能。
+
+完了条件       問題あり：テストで合格点以上 → completed
+               問題なし：「学習完了にする」ボタン → completed
+               合格後に再受験して不合格でも completed のまま（最高得点を保持）
+
+状態の記録     コンテンツを開く → learning、テスト画面を開く → testing
+
+受講者管理     一覧・受講者別の進捗確認まで。
+               Cognito ユーザーの作成は画面からは行わない（権限追加が必要なため）。
+```
+
+## 画面
+
+```text
+/phases                        学習コンテンツ一覧（フェーズ別、状態・解放状況）
+/contents/[contentId]          学習画面（YouTube は埋め込み、その他はリンク）
+/contents/[contentId]/test     理解度テスト・受験履歴
+/admin                         概要（最新テスト結果・日報）
+/admin/phases                  Phase管理
+/admin/contents                コンテンツ管理（一覧・追加・編集・削除）
+/admin/contents/[contentId]    コンテンツ編集＋テスト管理（問題の追加・編集・削除）
+/admin/students                受講者一覧・コンテンツ別進捗
+/admin/students/[userId]       受講者ごとの進捗・テスト結果・日報
+
+/phase1 と /test は /phases へ転送
+```
+
+## DynamoDB テーブル
+
+```text
+phases            phaseId
+contents          contentId
+tests             testId（contentId 属性を追加）
+test_results      resultId（contentId / passed / passScore / attempts を追加）
+content_progress  userId + contentId（新規）
+```
+
+## AWS 反映手順
+
+1. admin ユーザーで IAM ポリシーを更新（develop ユーザーは IAM を変更できない）
+
+```text
+TrainingPortalDynamoDBAccess（コンピューティングロール）
+  → infrastructure/iam/amplify-compute-role-policy.json の内容で新しいバージョンを作成
+    （新テーブル3つと、DeleteItem / Query を追加）
+
+TrainingPortalDeveloper（develop-group）
+  → infrastructure/iam/training-portal-developer-policy.json の内容で新しいバージョンを作成
+    （新テーブル3つを追加）
+```
+
+2. テーブル作成と初期データ投入（develop ユーザー）
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" ./infrastructure/dynamodb/init.sh --aws
+& "C:\Program Files\Git\bin\bash.exe" ./infrastructure/dynamodb/seed.sh --aws phases contents tests
+```
+
+users は上書きしないよう、投入するテーブルを指定する。
+
+3. feature/content-management → develop → main にマージ（Amplify が自動ビルド）

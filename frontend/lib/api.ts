@@ -37,10 +37,20 @@ function toMessage(error: unknown): string {
   return error.message || "サーバーエラーが発生しました";
 }
 
-/** Route Handler 共通のエラーレスポンス */
+/** Route Handler 共通のエラーレスポンス（入力エラーは 400） */
 export function errorResponse(error: unknown, status = 500) {
+  if (error instanceof Error && error.name === "InputError") {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
   console.error(error);
   return NextResponse.json({ error: toMessage(error) }, { status });
+}
+
+export function badRequest(errors: string[] | string) {
+  return NextResponse.json(
+    { error: Array.isArray(errors) ? errors.join("\n") : errors },
+    { status: 400 },
+  );
 }
 
 export async function readJson<T>(req: Request): Promise<T | null> {
