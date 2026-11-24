@@ -1,0 +1,94 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynamoDBTrainingPortalTables",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:UpdateTable",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:GetItem",
+        "dynamodb:BatchGetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:Scan",
+        "dynamodb:Query"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/users",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/users/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/reports",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/reports/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/phases",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/phases/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/contents",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/contents/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/tests",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/tests/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/test_results",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/test_results/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/content_progress",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/content_progress/index/*",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/progress",
+        "arn:aws:dynamodb:ap-northeast-1:696741018920:table/progress/index/*"
+      ]
+    },
+    {
+      "Sid": "CognitoTrainingPortalUserPool",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:Admin*",
+        "cognito-idp:Describe*",
+        "cognito-idp:List*",
+        "cognito-idp:GetGroup",
+        "cognito-idp:CreateGroup",
+        "cognito-idp:UpdateGroup",
+        "cognito-idp:UpdateUserPoolClient"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-northeast-1:696741018920:userpool/ap-northeast-1_WIFdomguf"
+    },
+    {
+      "Sid": "AmplifyTrainingPortalApp",
+      "Effect": "Allow",
+      "Action": "amplify:*",
+      "Resource": [
+        "arn:aws:amplify:ap-northeast-1:696741018920:apps/d3gpm7w9tm4i7j",
+        "arn:aws:amplify:ap-northeast-1:696741018920:apps/d3gpm7w9tm4i7j/*"
+      ]
+    },
+    {
+      "Sid": "ProtectAmplifyApp",
+      "Effect": "Deny",
+      "Action": "amplify:DeleteApp",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ListAndRead",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:ListTables",
+        "cognito-idp:ListUserPools",
+        "amplify:ListApps",
+        "iam:Get*",
+        "iam:List*",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PassComputeRoleToAmplify",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::696741018920:role/training-portal-amplify-compute-role",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "amplify.amazonaws.com"
+        }
+      }
+    }
+  ]
+}

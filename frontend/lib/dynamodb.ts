@@ -28,7 +28,9 @@ export const ddb = DynamoDBDocumentClient.from(new DynamoDBClient(config), {
 export const TABLES = {
   users: process.env.USERS_TABLE ?? "users",
   reports: process.env.REPORTS_TABLE ?? "reports",
+  phases: process.env.PHASES_TABLE ?? "phases",
+  contents: process.env.CONTENTS_TABLE ?? "contents",
   tests: process.env.TESTS_TABLE ?? "tests",
-  progress: process.env.PROGRESS_TABLE ?? "progress",
   testResults: process.env.TEST_RESULTS_TABLE ?? "test_results",
+  contentProgress: process.env.CONTENT_PROGRESS_TABLE ?? "content_progress",
 } as const;

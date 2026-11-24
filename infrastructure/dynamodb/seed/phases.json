@@ -1,0 +1,46 @@
+{
+  "phases": [
+    {
+      "PutRequest": {
+        "Item": {
+          "phaseId": {
+            "S": "phase1"
+          },
+          "title": {
+            "S": "AWS基礎"
+          },
+          "description": {
+            "S": "クラウドとAWSの基本サービスを社内教材で学びます。"
+          },
+          "order": {
+            "N": "1"
+          },
+          "published": {
+            "BOOL": true
+          }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "phaseId": {
+            "S": "phase2"
+          },
+          "title": {
+            "S": "外部動画で学ぶ"
+          },
+          "description": {
+            "S": "外部の動画教材でAWSの理解を深めます。（準備中）"
+          },
+          "order": {
+            "N": "2"
+          },
+          "published": {
+            "BOOL": false
+          }
+        }
+      }
+    }
+  ]
+}

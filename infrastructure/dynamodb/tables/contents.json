@@ -1,0 +1,16 @@
+{
+  "TableName": "contents",
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "contentId",
+      "AttributeType": "S"
+    }
+  ],
+  "KeySchema": [
+    {
+      "AttributeName": "contentId",
+      "KeyType": "HASH"
+    }
+  ],
+  "BillingMode": "PAY_PER_REQUEST"
+}
